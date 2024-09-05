@@ -1,48 +1,51 @@
-odoo.define('etims_pos.PaymentScreen', function (require) {
+odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
     'use strict';
 
     const Registries = require("point_of_sale.Registries");
     const PaymentScreen = require("point_of_sale.PaymentScreen");
     const rpc = require("web.rpc");
+    const { Gui } = require('point_of_sale.Gui');
 
     const PaymentScreenExtend = PaymentScreen => class extends PaymentScreen {
 
-        async _finalizeValidation() {
-            await super._finalizeValidation(...arguments);
-            await this.tims_sign_receipt();
-        }
-
-        async tims_sign_receipt() {
-            const self = this
-            console.log('self.env.pos.company .........................:', self.env.pos.company);
-            // if (self.env.pos.company.etims_device_serial_number) {
-            const order = self.env.pos.get_order();
-
+         async _finalizeValidation() {
+            const order = this.currentOrder;
+            const orderData = order.export_as_JSON(); // Collect order data to send to the backend
+             // # create the order in the backend
+             await  super._finalizeValidation(); //TODO check if this should be calledbefore our logic to ensure order is created
+            // Call your custom backend function via rpc before finalizing the order
             await rpc.query({
-                model: "pos.order",
-                method: "tims_receipt_payload",
-                args: [order.name],
-            }).then(function (result) {
-                console.log('result><>>>>>>>>>>>>>>>>>>>>>> :', result);
-                order.ke_etims_rcpt_sign = result.ke_etims_rcpt_sign;
-                order.ke_etims_sdc_date_time = result.ke_etims_sdc_date_time;
-                order.sdcId = result.sdcId;
-                order.etims_qr_code = result.etims_qr_code;
-                order.branch_seq = result.branch_seq;
-                order.ke_etims_rcpt_sign_formatted = result.ke_etims_rcpt_sign_formatted;
-                order.ke_etims_intrl_data_formatted = result.ke_etims_intrl_data_formatted;
-                order.tax_mapping = result.tax_mapping;
-                
+                model: 'pos.order',
+                method: 'sign_order',
+                args: [{}, orderData]  // Pass order data to the custom backend function
+            }).then((result) => {
+                console.log("Custom function called successfully:", result);
+                if (result) {
+                    order.ke_etims_rcpt_sign = result.ke_etims_rcpt_sign;
+                }
+                else{
+                    // #pop up error message
+                      Gui.showPopup('ErrorPopup', {
+                    title: 'KRA ETIMS ERROR',
+                    body: 'There was an issue communicating with the server.',
+                });
 
+                }
+            }).catch((error) => {
+                console.error("Error calling custom function:", error);
+                // #pop up error message
+                Gui.showPopup('ErrorPopup', {
+                    title: 'KRA ETIMS ERROR',
+                    body: 'There was an issue communicating with the server.'
+                });
 
-                
-                
-
-                
             });
-            // }
-        }
+
+            // Call the original _finalizeValidation to complete the validation process
+            return super._finalizeValidation();
     }
+
+        }
 
 
     Registries.Component.extend(PaymentScreen, PaymentScreenExtend);

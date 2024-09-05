@@ -9,17 +9,8 @@
 
             <xpath expr="//page[@name='extra']" position="inside">
                     <group>
-                        <field name="ke_etims_rcpt_sign" />
-                        <field name="ke_etims_sdc_date_time" />
-                        <field name="ke_etims_tot_rcpt_no" />
-                        <field name="ke_etims_intrl_data" />
-                        <field name="sdcId" />
-                        <field name="mrcNo" />
-                        <field name="branch_seq" />
-                        <field name="ke_etims_intrl_data_formatted" />
-                        <field name="ke_etims_rcpt_sign_formatted" />
-                        <field name="ke_etims_qr_code_url" />
-                        <field name="etims_qr_code"  widget="image" class="oe_avatar" />
+                        <field name="l10n_ke_oscu_invoice_number" />
+
                         
                     </group>
                

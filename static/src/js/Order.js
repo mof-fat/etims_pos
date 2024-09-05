@@ -1,4 +1,4 @@
-odoo.define('etims_pos.OrderReceipt', function (require) {
+odoo.define('l10n_ke_etims_vscu_pos.OrderReceipt', function (require) {
     "use strict";
 
     const Registries = require("point_of_sale.Registries");
