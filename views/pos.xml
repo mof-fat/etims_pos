@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <!-- pos.order inherit form view -->
+    <record id="oo_esd_view_pos_pos_form" model="ir.ui.view">
+        <field name="name">pos.order.inherit.view.form</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//page[@name='extra']" position="inside">
+                    <group>
+                        <field name="ke_etims_rcpt_sign" />
+                        <field name="ke_etims_sdc_date_time" />
+                        <field name="ke_etims_tot_rcpt_no" />
+                        <field name="ke_etims_intrl_data" />
+                        <field name="sdcId" />
+                        <field name="mrcNo" />
+                        <field name="branch_seq" />
+                        <field name="ke_etims_intrl_data_formatted" />
+                        <field name="ke_etims_rcpt_sign_formatted" />
+                        <field name="ke_etims_qr_code_url" />
+                        <field name="etims_qr_code"  widget="image" class="oe_avatar" />
+                        
+                    </group>
+               
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
