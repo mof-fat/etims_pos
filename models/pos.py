@@ -135,27 +135,34 @@ class PosOrder(models.Model):
         confirmation_datetime = format_etims_datetime(fields.Datetime.now())
 
         invoice_date = order.date_order or ''
+        _logger.info(f'=============INVOICE_DATE========== {invoice_date}')
 
         original_invoice_number = order.pos_reference or 0
+        _logger.info(f'===========INVOICE_NUMBER========= {original_invoice_number}')
 
         tax_codes = {item['code']: item['tax_rate'] for item in
                      self.env['l10n_ke_etims_vscu.code'].search([('code_type', '=', '04')])}
+        _logger.info(f'========TAX_CODES========== {tax_codes}')
 
         tax_rates = {f'taxRt{letter}': tax_codes.get(letter, 0) for letter in TAX_CODE_LETTERS}
+        _logger.info(f'========TAX_RATES========== {tax_rates}')
 
         line_items = self._l10n_ke_oscu_get_json_from_lines(order)
+        _logger.info(f'========LINE_ITEMS========== {line_items}')
 
         taxable_amounts = {
             f'taxblAmt{letter}': self.json_float_round(sum(
                 item['taxblAmt'] for item in line_items if item['taxTyCd'] == letter
             ), 2) for letter in TAX_CODE_LETTERS
         }
+        _logger.info(f'========TAXABLE_AMOUNTS========== {taxable_amounts}')
 
         tax_amounts = {
             f'taxAmt{letter}': self.json_float_round(sum(
                 item['taxAmt'] for item in line_items if item['taxTyCd'] == letter
             ), 2) for letter in TAX_CODE_LETTERS
         }
+        _logger.info(f'========TAX_AMOUNTS========== {tax_amounts}')
 
         content = {
             'invcNo': order.pos_reference,  # KRA Invoice Number (set at the point of sending)
