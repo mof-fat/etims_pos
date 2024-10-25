@@ -6,15 +6,11 @@ odoo.define('l10n_ke_etims_vscu_pos.ReceiptScreen', function (require) {
     const rpc = require("web.rpc");
     const { Gui } = require('point_of_sale.Gui');
 
-    console.log("===============Receipt Screen===============")
-
     const ReceiptScreenExtend = ReceiptScreen => class extends ReceiptScreen {
 
         async handleAutoPrint() {
                 if (this._shouldAutoPrint()) {
-                    console.log("===============Receipt Screen1===============")
                     await this.currentOrder;
-                    console.log("===============Receipt Screen2===============", this.currentOrder)
                     const currentOrder = this.currentOrder;
                     const orderData = currentOrder.export_as_JSON(); // Collect order data to send to the backend
 
@@ -24,7 +20,6 @@ odoo.define('l10n_ke_etims_vscu_pos.ReceiptScreen', function (require) {
                         method: 'sign_order',
                         args: [{}, orderData]  // // Pass empty
                     }).then((result) => {
-                        console.log("===Custom function called successfully:===", result.rcptSign);
                         if (result) {
                             currentOrder.ke_etims_rcpt_sign = result.rcptSign;
                             currentOrder.ke_etims_sdc_date_time = result.ke_etims_sdc_date_time;
@@ -61,7 +56,6 @@ odoo.define('l10n_ke_etims_vscu_pos.ReceiptScreen', function (require) {
 
                         }
                     }).catch((error) => {
-                        console.error("===Error calling custom function:===", error);
                         // #pop up error message
                         Gui.showPopup('ErrorPopup', {
                             title: 'KRA E-TIMS ERROR',
