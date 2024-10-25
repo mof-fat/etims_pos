@@ -24,6 +24,7 @@
     'assets': {
         'point_of_sale.assets': [
             'l10n_ke_etims_vscu_pos/static/src/js/PaymentScreen.js',
+            'l10n_ke_etims_vscu_pos/static/src/js/ReceiptScreen.js',
             'l10n_ke_etims_vscu_pos/static/src/js/Order.js',
             'l10n_ke_etims_vscu_pos/static/src/xml/OrderReceipt.xml',
         ],
