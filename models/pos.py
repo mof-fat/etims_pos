@@ -248,13 +248,8 @@ class PosOrder(models.Model):
 
             code = product.l10n_ke_item_code or self._calculate_l10n_ke_item_code(product)
             content = {
-<<<<<<< HEAD
-                'itemCd':      code if code else "KE2BFTNE00000000039",                  # Item Code
-                'itemClsCd':   product.unspsc_code_id.code if product.unspsc_code_id.code else "00000", # HS Code (unspsc format)
-=======
                 'itemCd':      code if code else "", # Item Code
                 'itemClsCd':   product.unspsc_code_id.code if product.unspsc_code_id.code else "", # HS Code (unspsc format)
->>>>>>> eadfe1557f7e951ccbd739304867357e677c2737
                 'itemTyCd':    product.l10n_ke_product_type_code if product.l10n_ke_product_type_code else '2',  # Generally raw material, finished product, service
                 'itemNm':      product.name,                                             # Product name
                 'orgnNatCd':   product.l10n_ke_origin_country_id.code if product.l10n_ke_origin_country_id.code else "KE",  # Origin nation code
@@ -302,13 +297,8 @@ class PosOrder(models.Model):
 
             line_values = {
                 'itemSeq': index + 1,  # Line number
-<<<<<<< HEAD
-                'itemCd': product.l10n_ke_item_code if product.l10n_ke_item_code else "KE1NTXU0000006",  # Item code as defined by us, of the form KE2BFTNE0000000000000039
-                'itemClsCd': product.unspsc_code_id.code if product.unspsc_code_id.code else "TOL001321",  # Item classification code, in this case the UNSPSC code
-=======
                 'itemCd': product.l10n_ke_item_code if product.l10n_ke_item_code else "",  # Item code as defined by us, of the form
                 'itemClsCd': product.unspsc_code_id.code if product.unspsc_code_id.code else "",  # Item classification code, in this case the UNSPSC code
->>>>>>> eadfe1557f7e951ccbd739304867357e677c2737
                 'itemNm': line.product_id.name,  # Item name
                 'pkgUnitCd': product.l10n_ke_packaging_unit_id.code if product.l10n_ke_packaging_unit_id.code else 'NT',
                 # Packaging code, describes the type of package used
