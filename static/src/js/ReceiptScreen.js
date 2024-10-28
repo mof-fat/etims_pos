@@ -29,6 +29,7 @@ odoo.define('l10n_ke_etims_vscu_pos.ReceiptScreen', function (require) {
                                     title: 'KRA E-TIMS ERROR',
                                     body: 'Payment Type Code is empty..'
                                 });
+                                throw new Error("Payment Type Code is empty.");
                             }
                             currentOrder.ke_etims_rcpt_sign = result.rcptSign;
                             currentOrder.ke_etims_sdc_date_time = result.ke_etims_sdc_date_time;
