@@ -9,6 +9,10 @@ from odoo.exceptions import ValidationError, UserError
 import pytz
 import json
 from typing import Any, Union
+from psycopg2.errors import LockNotAvailable
+import pyqrcode as pyqrcode
+import io
+import base64
 
 
 TAX_CODE_LETTERS = ['A', 'B', 'C', 'D', 'E']
@@ -48,6 +52,16 @@ class PosOrder(models.Model):
     l10n_ke_oscu_datetime = fields.Datetime(string="eTIMS Signing Time", copy=False)
     l10n_ke_oscu_internal_data = fields.Char(string="Internal Data", copy=False)
     l10n_ke_control_unit = fields.Char(string="Control Unit ID")
+    l10n_ke_qr_code = fields.Char('QR Code')
+
+    @api.depends('lines.price_unit', 'lines.qty')
+    def compute_total_before_discount(self):
+        lines = self.lines
+        for line in lines:
+            price_after_discount = line.price_unit * (1 - (line.discount or 0.0) / 100.0)
+            subtotal_after_discount = price_after_discount * line.qty
+
+            _logger.info(f'===============SUB_DISCOUNT============= %s', subtotal_after_discount)
 
     def json_float_round(self, data: Any, decimal_places: int) -> Any:
         """
@@ -58,86 +72,64 @@ class PosOrder(models.Model):
         :return: JSON-serializable object with rounded floating-point numbers.
         """
         if isinstance(data, dict):
-            return {key: json_float_round(value, decimal_places) for key, value in data.items()}
+            return {key: self.json_float_round(value, decimal_places) for key, value in data.items()}
         elif isinstance(data, list):
-            return [json_float_round(item, decimal_places) for item in data]
+            return [self.json_float_round(item, decimal_places) for item in data]
         elif isinstance(data, float):
             return round(data, decimal_places)
         else:
             return data
 
-    def action_pos_order_paid(self):
-        self.ensure_one()
 
-        # TODO: add support for mix of cash and non-cash payments when both cash_rounding and only_round_cash_method are True
-        if not self.config_id.cash_rounding \
-                or self.config_id.only_round_cash_method \
-                and not any(p.payment_method_id.is_cash_count for p in self.payment_ids):
-            total = self.amount_total
-        else:
-            total = float_round(self.amount_total, precision_rounding=self.config_id.rounding_method.rounding,
-                                rounding_method=self.config_id.rounding_method.rounding_method)
-
-        isPaid = float_is_zero(total - self.amount_paid, precision_rounding=self.currency_id.rounding)
-
-        if not isPaid and not self.config_id.cash_rounding:
-            raise UserError(_("Order %s is not fully paid.", self.name))
-        elif not isPaid and self.config_id.cash_rounding:
-            currency = self.currency_id
-            if self.config_id.rounding_method.rounding_method == "HALF-UP":
-                maxDiff = currency.round(self.config_id.rounding_method.rounding / 2)
-            else:
-                maxDiff = currency.round(self.config_id.rounding_method.rounding)
-
-            diff = currency.round(self.amount_total - self.amount_paid)
-            if not abs(diff) <= maxDiff:
-                raise UserError(_("Order %s is not fully paid.", self.name))
-
-        self.write({'state': 'paid'})
-        lines = self.lines
-        self.sign_order(lines)
-        return True
-
-
-    def sign_order(self, lines):
+    def sign_order(self, order):
             # TODO
             # 1. Check that all products in the order have a the required details to  generate etims code
             # 2. Check that the order has a payment method # Map Payment Method to eTIMS Payment Method
 
-            order = self
+            send_pos_order = {}
+            order = self.env['pos.order'].search([('pos_reference', '=', order['name'])])
+            lines = order.lines
+            _logger.info(f'=============ORDER_1============{order}')
 
-            _logger.info(f'==================SIGN_ORDER==================== {order.pos_reference}')
+            if order:
+                # 1
+                for line in lines:
+                    _logger.info(f'==ORDER=={order.pos_reference}')
+                    _logger.info(f'==ORDER_DATE=={order.date_order}')
+                    _logger.info(f'==ORDER_AMOUNT_PAID=={order.amount_paid}')
+                    _logger.info(f'==ORDER_TAX_AMOUNT=={order.amount_tax}')
+                    _logger.info(f'==ORDER_PAYMENT_METHOD=={order.payment_ids.payment_method_id.name}')
+                    _logger.info(f'==CUSTOMER=={order.partner_id.name}')
+                    _logger.info(f'==PRODUCT=={line.product_id.name}')
+                    _logger.info(f'==LINE_PRICE=={line.price_unit}')
+                    _logger.info(f'==LINE_QTY=={line.qty}')
+                    _logger.info(f'==LINE_TAX_IDS=={line.tax_ids}')
+                    _logger.info(f'==LINE_TAX_FISCAL=={line.tax_ids_after_fiscal_position}')
+                    _logger.info(f'==LINE_UOM=={line.product_uom_id.name}')
+                    _logger.info('')
 
-            # 1
-            for line in lines:
-                _logger.info(f'==ORDER=={order.pos_reference}')
-                _logger.info(f'==ORDER_DATE=={order.date_order}')
-                _logger.info(f'==ORDER_AMOUNT_PAID=={order.amount_paid}')
-                _logger.info(f'==ORDER_TAX_AMOUNT=={order.amount_tax}')
-                _logger.info(f'==ORDER_PAYMENT_METHOD=={order.payment_ids.payment_method_id.name}')
-                _logger.info(f'==CUSTOMER=={order.partner_id.name}')
-                _logger.info(f'==PRODUCT=={line.product_id.name}')
-                _logger.info(f'==LINE_PRICE=={line.price_unit}')
-                _logger.info(f'==LINE_QTY=={line.qty}')
-                _logger.info(f'==LINE_TAX_IDS=={line.tax_ids}')
-                _logger.info(f'==LINE_TAX_FISCAL=={line.tax_ids_after_fiscal_position}')
-                _logger.info(f'==LINE_UOM=={line.product_uom_id.name}')
-                _logger.info('')
+                send = self._l10n_ke_oscu_save_item(order)
+                _logger.info('***************send*************** %s', send)
 
-            json=self._l10n_ke_oscu_json_from_move(order)
-            _logger.info('***************json***************')
-            _logger.info(json)
+                json=self._l10n_ke_oscu_json_from_move(order)
+                _logger.info('***************json***************')
+                _logger.info(json)
+
+                send_pos_order = self._l10n_ke_oscu_send_customer_invoice(order)
+                _logger.info('***************send*************** %s', send_pos_order)
+
+            return send_pos_order
+
 
     def _l10n_ke_oscu_json_from_move(self, order):
         """ Get the json content of the TrnsSalesSaveWr/TrnsPurchaseSave request from a move. """
-        self.ensure_one()
 
         confirmation_datetime = format_etims_datetime(fields.Datetime.now())
 
         invoice_date = order.date_order or ''
         _logger.info(f'=============INVOICE_DATE========== {invoice_date}')
 
-        original_invoice_number = order.pos_reference or 0
+        original_invoice_number = order.sequence_number or 0
         _logger.info(f'===========INVOICE_NUMBER========= {original_invoice_number}')
 
         tax_codes = {item['code']: item['tax_rate'] for item in
@@ -164,12 +156,14 @@ class PosOrder(models.Model):
         }
         _logger.info(f'========TAX_AMOUNTS========== {tax_amounts}')
 
+        _logger.info(f"====TYPECODE===={order.payment_ids.mapped('payment_method_id.l10n_ke_payment_method_id').code or ''}")
+
         content = {
-            'invcNo': order.pos_reference,  # KRA Invoice Number (set at the point of sending)
+            'invcNo': order.sequence_number,  # KRA Invoice Number (set at the point of sending)
             'trdInvcNo': (order.pos_reference or '')[:50],  # Trader system invoice number
             'orgInvcNo': original_invoice_number,  # Original invoice number
             'cfmDt': confirmation_datetime,  # Validated date
-            'pmtTyCd': '',  # Payment type code
+            'pmtTyCd': order.payment_ids.mapped('payment_method_id.l10n_ke_payment_method_id').code or '',  # Payment type code
             'rcptTyCd': "S",
             'salesTyCd': 'N',
             **taxable_amounts,
@@ -183,6 +177,7 @@ class PosOrder(models.Model):
             **self.company_id._l10n_ke_get_user_dict(self.create_uid, self.write_uid),
         }
 
+        # is_purchase means account move move_type in ['in_invoice', 'in_refund', 'in_receipt']
         # if self.is_purchase_document(include_receipts=True):
         #     content.update({
         #         'spplrTin': (self.partner_id.vat or '')[:11],  # Supplier VAT
@@ -212,18 +207,78 @@ class PosOrder(models.Model):
             'custTin': (order.partner_id.vat or '')[:11],  # Partner VAT
             'custNm': (order.partner_id.name or '')[:60],  # Partner name
             'salesSttsCd': '02',  # Transaction status code (same as pchsSttsCd)
-            'salesDt': invoice_date,  # Sales date
+            'salesDt': invoice_date.strftime('%Y%m%d'),  # Sales date
             'prchrAcptcYn': 'Y',
             'receipt': receipt_part,
         })
 
-        # if self.move_type in ('out_refund', 'in_refund'):
-        #     content.update({'rfdRsnCd': self.l10n_ke_reason_code_id.code})
+        if self.has_refundable_lines:
+            content.update({'rfdRsnCd': self.l10n_ke_reason_code_id.code if self.l10n_ke_reason_code_id.code else ''})
         return content
+
+    def _calculate_l10n_ke_item_code(self, product):
+        """ Computes the item code of a given product
+
+        For instance KE1NTXU is an item code, where
+        KE:      first two digits are the origin country of the product
+        1:       the product type (raw material)
+        NT:      the packaging type
+        XU:      the quantity type
+        0000006: a unique value (id in our case)
+        """
+        code_fields = [
+            product.l10n_ke_origin_country_id.code,
+            product.l10n_ke_product_type_code,
+            product.l10n_ke_packaging_unit_id.code,
+            product.uom_id.l10n_ke_quantity_unit_id.code,
+        ]
+        if not all(code_fields):
+            return None
+
+        item_code_prefix = ''.join(code_fields)
+        return item_code_prefix.ljust(20 - len(str(self.id)), '0') + str(self.id)
+
+
+    def _l10n_ke_oscu_save_item_content(self, order):
+        """ Get a dict of values to be sent to the KRA for saving a product's information. """
+        content = {}
+
+        for index, line in enumerate(order.lines):
+            product = line.product_id  # for ease of reference
+
+            code = product.l10n_ke_item_code or self._calculate_l10n_ke_item_code(product)
+            content = {
+                'itemCd':      code if code else "", # Item Code
+                'itemClsCd':   product.unspsc_code_id.code if product.unspsc_code_id.code else "", # HS Code (unspsc format)
+                'itemTyCd':    product.l10n_ke_product_type_code if product.l10n_ke_product_type_code else '2',  # Generally raw material, finished product, service
+                'itemNm':      product.name,                                             # Product name
+                'orgnNatCd':   product.l10n_ke_origin_country_id.code if product.l10n_ke_origin_country_id.code else "KE",  # Origin nation code
+                'pkgUnitCd':   product.l10n_ke_packaging_unit_id.code if product.l10n_ke_packaging_unit_id.code else 'NT',  # Packaging unit code
+                'qtyUnitCd':   product.uom_id.l10n_ke_quantity_unit_id.code,             # Quantity unit code
+                'taxTyCd':     'B',                                                      # Tax type code
+                'bcd':         product.barcode or None,                                  # Self barcode
+                'dftPrc':      product.standard_price,                                   # Standard price
+                'isrcAplcbYn': 'Y' if product.l10n_ke_is_insurance_applicable else 'N',  # Is insurance applicable
+                'useYn': 'Y',
+                **self.env.company._l10n_ke_get_user_dict(self.create_uid, self.write_uid),
+            }
+        return content
+
+    def _l10n_ke_oscu_save_item(self, order):
+        """ Register a product with eTIMS. """
+        content = self._l10n_ke_oscu_save_item_content(order)
+        _logger.info(self.env.company)
+        _logger.info(content)
+        error, _data, _date = self.env.company._l10n_ke_call_etims('items/saveItems', content)
+        if not error:
+            for index, line in enumerate(order.lines):
+                product = line.product_id
+                product.l10n_ke_item_code = content['itemCd']
+        return error, content
+
 
     def _l10n_ke_oscu_get_json_from_lines(self, order):
         """ Return the values that should be sent to eTIMS for the lines in self. """
-        self.ensure_one()
         lines_values = []
         for index, line in enumerate(order.lines):
 
@@ -242,10 +297,10 @@ class PosOrder(models.Model):
 
             line_values = {
                 'itemSeq': index + 1,  # Line number
-                'itemCd': product.l10n_ke_item_code,  # Item code as defined by us, of the form KE2BFTNE0000000000000039
-                'itemClsCd': product.unspsc_code_id.code,  # Item classification code, in this case the UNSPSC code
+                'itemCd': product.l10n_ke_item_code if product.l10n_ke_item_code else "",  # Item code as defined by us, of the form
+                'itemClsCd': product.unspsc_code_id.code if product.unspsc_code_id.code else "",  # Item classification code, in this case the UNSPSC code
                 'itemNm': line.product_id.name,  # Item name
-                'pkgUnitCd': product.l10n_ke_packaging_unit_id.code,
+                'pkgUnitCd': product.l10n_ke_packaging_unit_id.code if product.l10n_ke_packaging_unit_id.code else 'NT',
                 # Packaging code, describes the type of package used
                 'pkg': product_uom_qty / product.l10n_ke_packaging_quantity,  # Number of packages used
                 'qtyUnitCd': line.product_uom_id.l10n_ke_quantity_unit_id.code,
@@ -255,10 +310,14 @@ class PosOrder(models.Model):
                 'splyAmt': price_subtotal_before_discount,
                 'dcRt': line.discount,
                 'dcAmt': discount_amount,
-                'taxTyCd': '',
+                'taxTyCd': 'B',
                 'taxblAmt': line.price_subtotal,
                 'taxAmt': line.price_subtotal_incl - line.price_subtotal,
                 'totAmt': line.price_subtotal_incl,
+                "isrccCd": '',
+                "isrccNm": '',
+                "isrcRt": '',
+                "isrcAmt": '',
             }
 
             fields_to_round = ('pkg', 'qty', 'prc', 'splyAmt', 'dcRt', 'dcAmt', 'taxblAmt', 'taxAmt', 'totAmt')
@@ -270,3 +329,108 @@ class PosOrder(models.Model):
 
             lines_values.append(line_values)
         return lines_values
+
+    def format_code(self, code):
+        return '-'.join([code[i:i + 4] for i in range(0, len(code), 4)])
+
+    def extract_date_time(self, datetime_str):
+        # Parse the string into a datetime object
+        dt = datetime.strptime(datetime_str, '%Y%m%d%H%M%S')
+        return dt
+
+    def _l10n_ke_oscu_send_customer_invoice(self, order):
+        content = self._l10n_ke_oscu_json_from_move(order)
+
+        _logger.info('====PAYLOAD==== %s', content)
+
+        error, data, _date = self.env.company._l10n_ke_call_etims('trnsSales/saveSales', content)
+        if not error:
+            if data:
+                lines = order.lines
+                number_of_items = len(lines)
+                _logger.info(f'====Number of items:==== {number_of_items}')
+
+                total_before_discount = 0
+                discount_amount = 0
+                for line in lines:
+                    price_after_discount = line.price_unit
+                    subtotal_after_discount = price_after_discount * line.qty
+                    total_before_discount += subtotal_after_discount
+                    discount = line.price_unit * (line.discount or 0.0) / 100.0
+                    discount_amount += discount
+
+                rcpt_no = data.get('rcptNo')
+                intrl_data = self.format_code(data.get('intrlData'))
+                rcpt_sign = self.format_code(data.get('rcptSign'))
+                tot_rcpt_no = data.get('totRcptNo')
+                vsdc_rcpt_pbct_date = self.extract_date_time(data.get('vsdcRcptPbctDate'))
+                vsdc_rcpt_date = vsdc_rcpt_pbct_date.strftime('%d-%m-%Y')
+                vsdc_rcpt_time = vsdc_rcpt_pbct_date.strftime('%H:%M:%S')
+                sdc_id = data.get('sdcId')
+                mrc_no = data.get('mrcNo')
+
+                taxblAmtA = content.get('taxblAmtA', "")
+                taxblAmtB = content.get('taxblAmtB', "")
+                taxblAmtC = content.get('taxblAmtC', "")
+                taxblAmtD = content.get('taxblAmtD', "")
+                taxblAmtE = content.get('taxblAmtE', "")
+                taxAmtA = content.get('taxAmtA', "")
+                taxAmtB = content.get('taxAmtB', "")
+                taxAmtC = content.get('taxAmtC', "")
+                taxAmtD = content.get('taxAmtD', "")
+                taxAmtE = content.get('taxAmtE', "")
+
+                # Print values to verify
+                _logger.info(f"===rcpt_no===: {rcpt_no}")
+                _logger.info(f"===intrl_data===: {intrl_data}")
+                _logger.info(f"===rcpt_sign===: {rcpt_sign}")
+                _logger.info(f"===tot_rcpt_no===: {tot_rcpt_no}")
+                _logger.info(f"===vsdc_rcpt_pbct_date===: {vsdc_rcpt_date}")
+                _logger.info(f"===vsdc_rcpt_pbct_time===: {vsdc_rcpt_time}")
+                _logger.info(f"===sdc_id===: {sdc_id}")
+                _logger.info(f"===mrc_no===: {mrc_no}")
+
+                kra_pin = self.env.company.kra_pin
+                branch_id = self.env.company.l10n_ke_branch_code
+                rcpt_sign = data.get('rcptSign')
+                qr_url = f'https://etims.kra.go.ke/common/link/etims/receipt/indexEtimsReceptData?{kra_pin}+{branch_id}+{rcpt_sign}'
+
+                data['l10n_ke_qr_code'] = qr_url
+                data['intrlData'] = self.format_code(data.get('intrlData', ''))
+                data['rcptSign'] = self.format_code(data.get('rcptSign', ''))
+                data['rcpt_no'] = rcpt_no
+                data['sdc_id'] = sdc_id
+                data['cu_invoice_no'] = f'{sdc_id}/{rcpt_no}'
+                data['vsdc_rcpt_time'] = vsdc_rcpt_time
+                data['vsdc_rcpt_date'] = vsdc_rcpt_date
+                data['number_of_items'] = number_of_items
+                data['total_before_discount'] = total_before_discount
+                data['discount_amount'] = discount_amount
+                data['taxblAmtA'] = taxblAmtA
+                data['taxblAmtB'] = taxblAmtB
+                data['taxblAmtC'] = taxblAmtC
+                data['taxblAmtD'] = taxblAmtD
+                data['taxblAmtE'] = taxblAmtE
+                data['taxAmtA'] = taxAmtA
+                data['taxAmtB'] = taxAmtB
+                data['taxAmtC'] = taxAmtC
+                data['taxAmtD'] = taxAmtD
+                data['taxAmtE'] = taxAmtE
+
+                self.write({
+                    'l10n_ke_oscu_receipt_number': data['rcptNo'],
+                    'l10n_ke_control_unit': data['sdcId'],
+                    'l10n_ke_oscu_invoice_number': content['invcNo'],
+                    'l10n_ke_oscu_signature': data['rcptSign'],
+                    'l10n_ke_oscu_datetime': parse_etims_datetime(data['vsdcRcptPbctDate']),
+                    'l10n_ke_oscu_internal_data': data['intrlData'],
+                    'l10n_ke_qr_code': qr_url,
+                })
+
+        _logger.info('====ERROR==== %s', error)
+        _logger.info('====RESPONSE==== %s', data)
+        _logger.info('====DATE==== %s', _date)
+        _logger.info('====DATA==== %s', content)
+
+        return data
+
