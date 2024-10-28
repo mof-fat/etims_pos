@@ -81,6 +81,25 @@ class PosOrder(models.Model):
         else:
             return data
 
+    def get_payment_code(self, order):
+        payment_id = order['statement_ids'][0][2]['payment_method_id']
+        payment_code = self.env['pos.payment'].search([('id', '=', payment_id)])
+
+        if (
+                payment_code
+                and payment_code.payment_method_id
+                and payment_code.payment_method_id.l10n_ke_payment_method_id
+        ):
+            payment_method = payment_code.payment_method_id.l10n_ke_payment_method_id
+            if not payment_method.code:
+                order['pmtTyCd'] = ""
+                return order
+            else:
+                order['pmtTyCd'] = payment_method.code
+
+        _logger.info(f'=========Payment code===========: {order}')
+        return order
+
     def sign_order(self, order):
         # TODO
         # 1. Check that all products in the order have a the required details to  generate etims code
@@ -101,29 +120,12 @@ class PosOrder(models.Model):
             else:
                 order['pmtTyCd'] = payment_method.code
 
-
         send_pos_order = {}
         order_ = self.env['pos.order'].search([('pos_reference', '=', order['name'])])
         lines = order_.lines
         _logger.info(f'=============ORDER_1============{order_}')
 
         if order_:
-            # 1
-            for line in lines:
-                _logger.info(f'==ORDER=={order_.pos_reference}')
-                _logger.info(f'==ORDER_DATE=={order_.date_order}')
-                _logger.info(f'==ORDER_AMOUNT_PAID=={order_.amount_paid}')
-                _logger.info(f'==ORDER_TAX_AMOUNT=={order_.amount_tax}')
-                _logger.info(f'==ORDER_PAYMENT_METHOD=={order_.payment_ids.payment_method_id.name}')
-                _logger.info(f'==CUSTOMER=={order_.partner_id.name}')
-                _logger.info(f'==PRODUCT=={line.product_id.name}')
-                _logger.info(f'==LINE_PRICE=={line.price_unit}')
-                _logger.info(f'==LINE_QTY=={line.qty}')
-                _logger.info(f'==LINE_TAX_IDS=={line.tax_ids}')
-                _logger.info(f'==LINE_TAX_FISCAL=={line.tax_ids_after_fiscal_position}')
-                _logger.info(f'==LINE_UOM=={line.product_uom_id.name}')
-                _logger.info('')
-
             send = self._l10n_ke_oscu_save_item(order_)
             _logger.info('***************send*************** %s', send)
 
