@@ -22,6 +22,14 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
             }).then((result) => {
                 console.log("===Custom function called successfully:===", result.rcptSign);
                 if (result) {
+                    order.pmtTyCd = result.pmtTyCd;
+                    // Check if pmtTyCd is empty
+                    if (!order.pmtTyCd) {
+                        Gui.showPopup('ErrorPopup', {
+                            title: 'KRA E-TIMS ERROR',
+                            body: 'Payment Type Code is empty..'
+                        });
+                    }
                     order.ke_etims_rcpt_sign = result.rcptSign;
                     order.ke_etims_sdc_date_time = result.ke_etims_sdc_date_time;
                     order.l10n_ke_qr_code = result.l10n_ke_qr_code
