@@ -12,8 +12,6 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
             const order = this.currentOrder;
             const orderData = order.export_as_JSON(); // Collect order data to send to the backend
 
-             // # create the order in the backend
-             await  super._finalizeValidation();
             // Call your custom backend function via rpc before finalizing the order
             await rpc.query({
                 model: 'pos.order',
@@ -74,6 +72,10 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                 });
 
             });
+
+
+            // # create the order in the backend
+             await  super._finalizeValidation();
 
             // Call the original _finalizeValidation to complete the validation process
             return super._finalizeValidation();
