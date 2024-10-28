@@ -13,15 +13,27 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
             const orderData = order.export_as_JSON(); // Collect order data to send to the backend
              let shouldFinalize = true;
 
+             console.log('===================================', orderData)
+
+             // # create the order in the backend
+             // await  super._finalizeValidation();
+
             // Call your custom backend function via rpc before finalizing the order
             await rpc.query({
                 model: 'pos.order',
                 method: 'sign_order',
-                args: [{}, orderData]  // // Pass empty
+                args: [{}, orderData]
             }).then((result) => {
-                console.log("===Custom function called successfully:===", result.rcptSign);
+                console.log("===Custom function called successfully:===", result);
                 if (result) {
                     order.pmtTyCd = result.pmtTyCd;
+                    if (!order.pmtTyCd) {
+                        Gui.showPopup('ErrorPopup', {
+                            title: 'KRA E-TIMS ERROR',
+                            body: 'Payment Type Code is empty..'
+                        });
+                        shouldFinalize = false;
+                    }
                     order.ke_etims_rcpt_sign = result.rcptSign;
                     order.ke_etims_sdc_date_time = result.ke_etims_sdc_date_time;
                     order.l10n_ke_qr_code = result.l10n_ke_qr_code
@@ -47,22 +59,14 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                     order.taxAmtC = result.taxAmtC
                     order.taxAmtD = result.taxAmtD
                     order.taxAmtE = result.taxAmtE
-
-                    if (!order.pmtTyCd) {
-                        Gui.showPopup('ErrorPopup', {
-                            title: 'KRA E-TIMS ERROR',
-                            body: 'Payment Type Code is empty..'
-                        });
-                        shouldFinalize = false; // Set the flag to false
-                    }
                 }
                 else{
                     // #pop up error message
                       Gui.showPopup('ErrorPopup', {
-                            title: 'KRA E-TIMS ERROR',
-                            body: 'There was an issue communicating with the server.',
-                        });
-                      shouldFinalize = false; // Set the flag to false
+                    title: 'KRA E-TIMS ERROR',
+                    body: 'There was an issue communicating with the server.',
+                });
+                      shouldFinalize = false;
 
                 }
             }).catch((error) => {
@@ -72,13 +76,12 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                     title: 'KRA E-TIMS ERROR',
                     body: error
                 });
-                shouldFinalize = false; // Set the flag to false
+                shouldFinalize = false;
 
             });
 
             // Call the original _finalizeValidation to complete the validation process
              if (shouldFinalize){
-                 // # create the order in the backend
                  await  super._finalizeValidation();
                  return super._finalizeValidation();
              }
