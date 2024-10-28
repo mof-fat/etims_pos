@@ -24,7 +24,7 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                 method: 'sign_order',
                 args: [{}, orderData]
             }).then((result) => {
-                console.log("===Custom function called successfully:===", result);
+                console.log("===Custom function called successfully:===", result.pmtTyCd);
                 if (result) {
                     order.pmtTyCd = result.pmtTyCd;
                     if (!order.pmtTyCd) {
