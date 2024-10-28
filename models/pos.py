@@ -82,50 +82,59 @@ class PosOrder(models.Model):
             return data
 
     def sign_order(self, order):
-            # TODO
-            # 1. Check that all products in the order have a the required details to  generate etims code
-            # 2. Check that the order has a payment method # Map Payment Method to eTIMS Payment Method
+        # TODO
+        # 1. Check that all products in the order have a the required details to  generate etims code
+        # 2. Check that the order has a payment method # Map Payment Method to eTIMS Payment Method
 
-            payment_id = order['statement_ids'][0][2]['payment_method_id']
-            payment_code = self.env['pos.payment'].search([('id', '=', payment_id)])
+        payment_id = order['statement_ids'][0][2]['payment_method_id']
+        payment_code = self.env['pos.payment'].search([('id', '=', payment_id)])
 
-            if not payment_code.payment_method_id.l10n_ke_payment_method_id.code:
+        if (
+                payment_code
+                and payment_code.payment_method_id
+                and payment_code.payment_method_id.l10n_ke_payment_method_id
+        ):
+            payment_method = payment_code.payment_method_id.l10n_ke_payment_method_id
+            if not payment_method.code:
                 order['pmtTyCd'] = ""
                 return order
+            else:
+                order['pmtTyCd'] = payment_method.code
 
-            send_pos_order = {}
-            order = self.env['pos.order'].search([('pos_reference', '=', order['name'])])
-            lines = order.lines
-            _logger.info(f'=============ORDER_1============{order}')
 
-            if order:
-                # 1
-                for line in lines:
-                    _logger.info(f'==ORDER=={order.pos_reference}')
-                    _logger.info(f'==ORDER_DATE=={order.date_order}')
-                    _logger.info(f'==ORDER_AMOUNT_PAID=={order.amount_paid}')
-                    _logger.info(f'==ORDER_TAX_AMOUNT=={order.amount_tax}')
-                    _logger.info(f'==ORDER_PAYMENT_METHOD=={order.payment_ids.payment_method_id.name}')
-                    _logger.info(f'==CUSTOMER=={order.partner_id.name}')
-                    _logger.info(f'==PRODUCT=={line.product_id.name}')
-                    _logger.info(f'==LINE_PRICE=={line.price_unit}')
-                    _logger.info(f'==LINE_QTY=={line.qty}')
-                    _logger.info(f'==LINE_TAX_IDS=={line.tax_ids}')
-                    _logger.info(f'==LINE_TAX_FISCAL=={line.tax_ids_after_fiscal_position}')
-                    _logger.info(f'==LINE_UOM=={line.product_uom_id.name}')
-                    _logger.info('')
+        send_pos_order = {}
+        order_ = self.env['pos.order'].search([('pos_reference', '=', order['name'])])
+        lines = order_.lines
+        _logger.info(f'=============ORDER_1============{order_}')
 
-                send = self._l10n_ke_oscu_save_item(order)
-                _logger.info('***************send*************** %s', send)
+        if order_:
+            # 1
+            for line in lines:
+                _logger.info(f'==ORDER=={order_.pos_reference}')
+                _logger.info(f'==ORDER_DATE=={order_.date_order}')
+                _logger.info(f'==ORDER_AMOUNT_PAID=={order_.amount_paid}')
+                _logger.info(f'==ORDER_TAX_AMOUNT=={order_.amount_tax}')
+                _logger.info(f'==ORDER_PAYMENT_METHOD=={order_.payment_ids.payment_method_id.name}')
+                _logger.info(f'==CUSTOMER=={order_.partner_id.name}')
+                _logger.info(f'==PRODUCT=={line.product_id.name}')
+                _logger.info(f'==LINE_PRICE=={line.price_unit}')
+                _logger.info(f'==LINE_QTY=={line.qty}')
+                _logger.info(f'==LINE_TAX_IDS=={line.tax_ids}')
+                _logger.info(f'==LINE_TAX_FISCAL=={line.tax_ids_after_fiscal_position}')
+                _logger.info(f'==LINE_UOM=={line.product_uom_id.name}')
+                _logger.info('')
 
-                json=self._l10n_ke_oscu_json_from_move(order)
-                _logger.info('***************json***************')
-                _logger.info(json)
+            send = self._l10n_ke_oscu_save_item(order_)
+            _logger.info('***************send*************** %s', send)
 
-                send_pos_order = self._l10n_ke_oscu_send_customer_invoice(order)
-                _logger.info('***************send*************** %s', send_pos_order)
+            json=self._l10n_ke_oscu_json_from_move(order_)
+            _logger.info('***************json***************')
+            _logger.info(json)
 
+            send_pos_order = self._l10n_ke_oscu_send_customer_invoice(order_)
+            _logger.info('***************send*************** %s', send_pos_order)
             return send_pos_order
+        return order
 
 
     def _l10n_ke_oscu_json_from_move(self, order):
