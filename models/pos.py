@@ -389,6 +389,7 @@ class PosOrder(models.Model):
                 taxAmtC = content.get('taxAmtC', "")
                 taxAmtD = content.get('taxAmtD', "")
                 taxAmtE = content.get('taxAmtE', "")
+                pmtTyCd = content.get('pmtTyCd', "")
 
                 # Print values to verify
                 _logger.info(f"===rcpt_no===: {rcpt_no}")
@@ -426,6 +427,7 @@ class PosOrder(models.Model):
                 data['taxAmtC'] = taxAmtC
                 data['taxAmtD'] = taxAmtD
                 data['taxAmtE'] = taxAmtE
+                data['pmtTyCd'] = pmtTyCd
 
                 self.write({
                     'l10n_ke_oscu_receipt_number': data['rcptNo'],
