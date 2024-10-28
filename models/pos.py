@@ -53,6 +53,7 @@ class PosOrder(models.Model):
     l10n_ke_oscu_internal_data = fields.Char(string="Internal Data", copy=False)
     l10n_ke_control_unit = fields.Char(string="Control Unit ID")
     l10n_ke_qr_code = fields.Char('QR Code')
+    l10n_ke_pmtTyCd = fields.Char(string="PMT TyCd")
 
     @api.depends('lines.price_unit', 'lines.qty')
     def compute_total_before_discount(self):
@@ -80,11 +81,17 @@ class PosOrder(models.Model):
         else:
             return data
 
-
     def sign_order(self, order):
             # TODO
             # 1. Check that all products in the order have a the required details to  generate etims code
             # 2. Check that the order has a payment method # Map Payment Method to eTIMS Payment Method
+
+            payment_id = order['statement_ids'][0][2]['payment_method_id']
+            payment_code = self.env['pos.payment'].search([('id', '=', payment_id)])
+
+            if not payment_code.payment_method_id.l10n_ke_payment_method_id.code:
+                order['pmtTyCd'] = ""
+                return order
 
             send_pos_order = {}
             order = self.env['pos.order'].search([('pos_reference', '=', order['name'])])
