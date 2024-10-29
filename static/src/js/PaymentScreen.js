@@ -21,7 +21,7 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                 args: [{}, orderData]
             });
 
-            console.log("===Custom function called successfully:===", paymentResult.pmtTyCd);
+            console.log("===Custom function called successfully:===", paymentResult);
 
             if (paymentResult) {
                 order.pmtTyCd = paymentResult.pmtTyCd;
@@ -45,7 +45,7 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                     args: [{}, orderData]
                 });
 
-                console.log("===Custom function called successfully:===", signResult.pmtTyCd);
+                console.log("===Custom function called successfully:===", signResult);
 
                 if (signResult) {
                     order.pmtTyCd = signResult.pmtTyCd; // This might be redundant if it's already set
