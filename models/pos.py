@@ -105,9 +105,6 @@ class PosOrder(models.Model):
         payment_id = order['statement_ids'][0][2]['payment_method_id']
         payment_code = self.env['pos.payment.method'].search([('id', '=', payment_id)])
 
-        _logger.info(f'===={payment_code}')
-        _logger.info(f'===={payment_id}')
-
         if (
                 payment_code
                 and payment_code.l10n_ke_payment_method_id
@@ -150,9 +147,9 @@ class PosOrder(models.Model):
             send = self._l10n_ke_oscu_save_item(order_)
             _logger.info('***************send*************** %s', send)
 
-            json=self._l10n_ke_oscu_json_from_move(order_)
-            _logger.info('***************json***************')
-            _logger.info(json)
+            # json=self._l10n_ke_oscu_json_from_move(order_)
+            # _logger.info('***************json***************')
+            # _logger.info(json)
 
             send_pos_order = self._l10n_ke_oscu_send_customer_invoice(order_)
             _logger.info('***************send*************** %s', send_pos_order)
