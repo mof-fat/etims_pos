@@ -54,7 +54,63 @@ class PosOrder(models.Model):
     l10n_ke_control_unit = fields.Char(string="Control Unit ID")
     l10n_ke_qr_code = fields.Char('QR Code')
     l10n_ke_pmtTyCd = fields.Char(string="PMT TyCd")
+    taxblAmtA = fields.Char(string="taxblAmtA")
+    taxblAmtB = fields.Char(string="taxblAmtB")
+    taxblAmtC = fields.Char(string="taxblAmtC")
+    taxblAmtD = fields.Char(string="taxblAmtD")
+    taxblAmtE = fields.Char(string="taxblAmtE")
+    taxAmtA = fields.Char(string="taxAmtA")
+    taxAmtB = fields.Char(string="taxAmtB")
+    taxAmtC = fields.Char(string="taxAmtC")
+    taxAmtD = fields.Char(string="taxAmtD")
+    taxAmtE = fields.Char(string="taxAmtE")
+    total_before_discount = fields.Float(string="Before Discount", copy=False)
+    total_discount = fields.Float(string="Discount", copy=False)
+    sdc_id = fields.Char(string="SDC ID", copy=False)
+    mrc_no = fields.Char(string="MRC No", copy=False)
+    vsdc_rcpt_pbct_date = fields.Datetime(string="VSDC RCP Date", copy=False)
+    vsdc_rcpt_time = fields.Datetime(string="VSDC RCP Time", copy=False)
+    rcpt_no = fields.Char(string="RCP No", copy=False)
+    cu_invoice_no =fields.Char(string="Invoice No", copy=False)
+    vsdc_rcpt_date = fields.Datetime(string="VSDC RCP Date", copy=False)
 
+    def get_order(self, name):
+        order = self.env['pos.order'].search([('pos_reference', '=', name)], limit=1)
+        _logger.info(f'==GET_ORDER==={order}')
+
+        if order:
+            return {
+                'l10n_ke_oscu_confirmation_datetime': order.l10n_ke_oscu_confirmation_datetime,
+                'l10n_ke_oscu_receipt_number': order.l10n_ke_oscu_receipt_number,
+                'l10n_ke_oscu_invoice_number': order.l10n_ke_oscu_invoice_number,
+                'l10n_ke_oscu_signature': order.l10n_ke_oscu_signature,
+                'l10n_ke_oscu_datetime': order.l10n_ke_oscu_datetime,
+                'l10n_ke_oscu_internal_data': order.l10n_ke_oscu_internal_data,
+                'l10n_ke_control_unit': order.l10n_ke_control_unit,
+                'l10n_ke_qr_code': order.l10n_ke_qr_code,
+                'l10n_ke_pmtTyCd': order.l10n_ke_pmtTyCd,
+                'taxblAmtA': order.taxblAmtA,
+                'taxblAmtB': order.taxblAmtB,
+                'taxblAmtC': order.taxblAmtC,
+                'taxblAmtD': order.taxblAmtD,
+                'taxblAmtE': order.taxblAmtE,
+                'taxAmtA': order.taxAmtA,
+                'taxAmtB': order.taxAmtB,
+                'taxAmtC': order.taxAmtC,
+                'taxAmtD': order.taxAmtD,
+                'taxAmtE': order.taxAmtE,
+                'total_before_discount': order.total_before_discount,
+                'total_discount': order.total_discount,
+                'sdc_id': order.sdc_id,
+                'mrc_no': order.mrc_no,
+                'vsdc_rcpt_pbct_date': order.vsdc_rcpt_pbct_date,
+                'vsdc_rcpt_date': order.vsdc_rcpt_date,
+                'vsdc_rcpt_time': order.vsdc_rcpt_time,
+                'rcpt_no': order.rcpt_no,
+                'cu_invoice_no': order.cu_invoice_no,
+            }
+
+        return {}
 
     def _l10n_ke_get_invoice_sequence(self):
         """ Returns the KRA invoice sequence for this order """
@@ -417,6 +473,24 @@ class PosOrder(models.Model):
                 taxAmtE = content.get('taxAmtE', "")
                 pmtTyCd = content.get('pmtTyCd', "")
 
+                order.taxblAmtA = content.get('taxblAmtA', "")
+                order.taxblAmtB = content.get('taxblAmtB', "")
+                order.taxblAmtC = content.get('taxblAmtC', "")
+                order.taxblAmtD = content.get('taxblAmtD', "")
+                order.taxblAmtE = content.get('taxblAmtE', "")
+                order.taxAmtA = content.get('taxAmtA', "")
+                order.taxAmtB = content.get('taxAmtB', "")
+                order.taxAmtC = content.get('taxAmtC', "")
+                order.taxAmtD = content.get('taxAmtD', "")
+                order.taxAmtE = content.get('taxAmtE', "")
+                order.l10n_ke_pmtTyCd = content.get('pmtTyCd', "")
+                order.sdc_id = sdc_id
+                order.mrc_no = mrc_no
+                order.vsdc_rcpt_pbct_date = vsdc_rcpt_pbct_date
+                order.vsdc_rcpt_date = vsdc_rcpt_pbct_date
+                order.vsdc_rcpt_time = vsdc_rcpt_pbct_date
+                order.rcpt_no = rcpt_no
+
                 # Print values to verify
                 _logger.info(f"===rcpt_no===: {rcpt_no}")
                 _logger.info(f"===intrl_data===: {intrl_data}")
@@ -454,6 +528,8 @@ class PosOrder(models.Model):
                 data['taxAmtD'] = taxAmtD
                 data['taxAmtE'] = taxAmtE
                 data['pmtTyCd'] = pmtTyCd
+
+                order.cu_invoice_no = data['cu_invoice_no']
 
                 self.write({
                     'l10n_ke_oscu_receipt_number': data['rcptNo'],
