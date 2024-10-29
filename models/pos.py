@@ -105,9 +105,6 @@ class PosOrder(models.Model):
         payment_id = order['statement_ids'][0][2]['payment_method_id']
         payment_code = self.env['pos.payment.method'].search([('id', '=', payment_id)])
 
-        _logger.info(f'===={payment_code}')
-        _logger.info(f'===={payment_id}')
-
         if (
                 payment_code
                 and payment_code.l10n_ke_payment_method_id
