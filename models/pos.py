@@ -352,6 +352,10 @@ class PosOrder(models.Model):
                 'dftPrc':      product.standard_price,                                   # Standard price
                 'isrcAplcbYn': 'Y' if product.l10n_ke_is_insurance_applicable else 'N',  # Is insurance applicable
                 'useYn': 'Y',
+                'regrId': self.env.user.id,
+                'regrNm': self.env.user.name,
+                'modrId': self.env.user.id,
+                'modrNm': self.env.user.name,
                 **self.env.company._l10n_ke_get_user_dict(self.create_uid, self.write_uid),
             }
         return content
