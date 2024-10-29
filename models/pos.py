@@ -55,6 +55,26 @@ class PosOrder(models.Model):
     l10n_ke_qr_code = fields.Char('QR Code')
     l10n_ke_pmtTyCd = fields.Char(string="PMT TyCd")
 
+
+    def _l10n_ke_get_invoice_sequence(self):
+        """ Returns the KRA invoice sequence for this order """
+        self.ensure_one()
+
+        sequence_code = 'l10n.ke.oscu.sale.sequence'
+
+        if not (sequence := self.env['ir.sequence'].search([
+            ('code', '=', sequence_code),
+            ('company_id', '=', self.company_id.id),
+        ])):
+            sequence_name = 'eTIMS Customer Invoice Number'
+            return self.env['ir.sequence'].create({
+                'name': sequence_name,
+                'implementation': 'no_gap',
+                'company_id': self.company_id.id,
+                'code': sequence_code,
+            })
+        return sequence
+
     @api.depends('lines.price_unit', 'lines.qty')
     def compute_total_before_discount(self):
         lines = self.lines
@@ -83,14 +103,16 @@ class PosOrder(models.Model):
 
     def get_payment_code(self, order):
         payment_id = order['statement_ids'][0][2]['payment_method_id']
-        payment_code = self.env['pos.payment'].search([('id', '=', payment_id)])
+        payment_code = self.env['pos.payment.method'].search([('id', '=', payment_id)])
+
+        _logger.info(f'===={payment_code}')
+        _logger.info(f'===={payment_id}')
 
         if (
                 payment_code
-                and payment_code.payment_method_id
-                and payment_code.payment_method_id.l10n_ke_payment_method_id
+                and payment_code.l10n_ke_payment_method_id
         ):
-            payment_method = payment_code.payment_method_id.l10n_ke_payment_method_id
+            payment_method = payment_code.l10n_ke_payment_method_id
             if not payment_method.code:
                 order['pmtTyCd'] = ""
                 return order
@@ -106,14 +128,13 @@ class PosOrder(models.Model):
         # 2. Check that the order has a payment method # Map Payment Method to eTIMS Payment Method
 
         payment_id = order['statement_ids'][0][2]['payment_method_id']
-        payment_code = self.env['pos.payment'].search([('id', '=', payment_id)])
+        payment_code = self.env['pos.payment.method'].search([('id', '=', payment_id)])
 
         if (
                 payment_code
-                and payment_code.payment_method_id
-                and payment_code.payment_method_id.l10n_ke_payment_method_id
+                and payment_code.l10n_ke_payment_method_id
         ):
-            payment_method = payment_code.payment_method_id.l10n_ke_payment_method_id
+            payment_method = payment_code.l10n_ke_payment_method_id
             if not payment_method.code:
                 order['pmtTyCd'] = ""
                 return order
@@ -177,7 +198,7 @@ class PosOrder(models.Model):
         _logger.info(f"====TYPECODE===={order.payment_ids.mapped('payment_method_id.l10n_ke_payment_method_id').code or ''}")
 
         content = {
-            'invcNo': order.sequence_number,  # KRA Invoice Number (set at the point of sending)
+            'invcNo': order._l10n_ke_get_invoice_sequence().next_by_id(),
             'trdInvcNo': (order.pos_reference or '')[:50],  # Trader system invoice number
             'orgInvcNo': original_invoice_number,  # Original invoice number
             'cfmDt': confirmation_datetime,  # Validated date
