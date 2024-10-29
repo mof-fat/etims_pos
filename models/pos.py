@@ -103,17 +103,16 @@ class PosOrder(models.Model):
 
     def get_payment_code(self, order):
         payment_id = order['statement_ids'][0][2]['payment_method_id']
-        payment_code = self.env['pos.payment'].search([('id', '=', payment_id)])
+        payment_code = self.env['pos.payment.method'].search([('id', '=', payment_id)])
 
         _logger.info(f'===={payment_code}')
         _logger.info(f'===={payment_id}')
 
         if (
                 payment_code
-                and payment_code.payment_method_id
-                and payment_code.payment_method_id.l10n_ke_payment_method_id
+                and payment_code.l10n_ke_payment_method_id
         ):
-            payment_method = payment_code.payment_method_id.l10n_ke_payment_method_id
+            payment_method = payment_code.l10n_ke_payment_method_id
             if not payment_method.code:
                 order['pmtTyCd'] = ""
                 return order
@@ -129,14 +128,13 @@ class PosOrder(models.Model):
         # 2. Check that the order has a payment method # Map Payment Method to eTIMS Payment Method
 
         payment_id = order['statement_ids'][0][2]['payment_method_id']
-        payment_code = self.env['pos.payment'].search([('id', '=', payment_id)])
+        payment_code = self.env['pos.payment.method'].search([('id', '=', payment_id)])
 
         if (
                 payment_code
-                and payment_code.payment_method_id
-                and payment_code.payment_method_id.l10n_ke_payment_method_id
+                and payment_code.l10n_ke_payment_method_id
         ):
-            payment_method = payment_code.payment_method_id.l10n_ke_payment_method_id
+            payment_method = payment_code.l10n_ke_payment_method_id
             if not payment_method.code:
                 order['pmtTyCd'] = ""
                 return order
