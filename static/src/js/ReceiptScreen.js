@@ -10,9 +10,11 @@ odoo.define('l10n_ke_etims_vscu_pos.ReceiptScreen', function (require) {
 
         async handleAutoPrint() {
                 if (this._shouldAutoPrint()) {
-                    await this.currentOrder;
-                    const currentOrder = this.currentOrder;
+                    await this.env.pos.get_order();
+                    const currentOrder = this.env.pos.get_order();
                     const orderData = currentOrder.export_as_JSON(); // Collect order data to send to the backend
+
+                    console.log('====ordey====', orderData)
 
                     // Call your custom backend function via rpc before finalizing the order
                     await rpc.query({

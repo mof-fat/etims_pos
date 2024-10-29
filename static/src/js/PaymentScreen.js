@@ -9,7 +9,7 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
     const PaymentScreenExtend = PaymentScreen => class extends PaymentScreen {
 
         async _finalizeValidation() {
-        const order = this.currentOrder;
+        const order = this.env.pos.get_order();
         const orderData = order.export_as_JSON(); // Collect order data to send to the backend
         let shouldFinalize = true;
 
