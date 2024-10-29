@@ -150,9 +150,9 @@ class PosOrder(models.Model):
             send = self._l10n_ke_oscu_save_item(order_)
             _logger.info('***************send*************** %s', send)
 
-            json=self._l10n_ke_oscu_json_from_move(order_)
-            _logger.info('***************json***************')
-            _logger.info(json)
+            # json=self._l10n_ke_oscu_json_from_move(order_)
+            # _logger.info('***************json***************')
+            # _logger.info(json)
 
             send_pos_order = self._l10n_ke_oscu_send_customer_invoice(order_)
             _logger.info('***************send*************** %s', send_pos_order)
