@@ -9,7 +9,7 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
     const PaymentScreenExtend = PaymentScreen => class extends PaymentScreen {
 
         async _finalizeValidation() {
-        const order = this.currentOrder;
+        const order = this.env.pos.get_order();
         const orderData = order.export_as_JSON(); // Collect order data to send to the backend
         let shouldFinalize = true;
 
@@ -58,8 +58,7 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                         branch_seq: signResult.branch_seq,
                         ke_etims_intrl_data_formatted: signResult.intrlData,
                         ke_etims_rcpt_sign_formatted: signResult.ke_etims_rcpt_sign_formatted,
-                        tax_mapping: signResult.tax_mapping,
-                        sdc_id: signResult.sdc_id,
+                        sdcId: signResult.sdc_id,
                         rcpt_no: signResult.rcpt_no,
                         cu_invoice_no: signResult.cu_invoice_no,
                         vsdc_rcpt_date: signResult.vsdc_rcpt_date,
@@ -78,6 +77,9 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                         taxAmtD: signResult.taxAmtD,
                         taxAmtE: signResult.taxAmtE,
                     });
+
+
+                    console.log("===Custom order:===", order);
                 } else {
                     Gui.showPopup('ErrorPopup', {
                         title: 'KRA E-TIMS ERROR',
