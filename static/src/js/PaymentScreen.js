@@ -64,7 +64,7 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
                 });
 
                 Object.keys(fields).forEach(field => {
-                    if (['itemCd', 'itemClsCd', 'itemTyCd', 'orgnNatCd','qtyUnitCd','taxTyCd'].includes(field)) {
+                    if (['itemCd', 'itemClsCd', 'itemTyCd', 'orgnNatCd','qtyUnitCd','taxTyCd','pkgUnitCd'].includes(field)) {
                             return; // Skip to the next iteration
                         }
 
