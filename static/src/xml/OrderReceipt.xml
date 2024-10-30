@@ -106,16 +106,17 @@
 
             <div>
                 TOTAL BEFORE DISCOUNT
-                <strong><span t-esc="env.pos.format_currency(receipt.total_before_discount)" class="pos-receipt-right-align"/></strong>
+                <strong><span t-esc="env.pos.format_currency(env.pos.get_order().total_before_discount)" class="pos-receipt-right-align"/></strong>
             </div>
 
             <div>
-                TOTAL DISCOUNT AWARDED
-                <strong><span t-esc="env.pos.format_currency(receipt.discount_amount)" class="pos-receipt-right-align"/></strong>
+                DISCOUNT AWARDED
+                <strong><span t-esc="env.pos.format_currency(env.pos.get_order().discount_amount)" class="pos-receipt-right-align"/></strong>
             </div>
 
             <div>
                 SUB TOTAL
+                <strong><span t-esc="env.pos.format_currency(receipt.subtotal)" class="pos-receipt-right-align"/></strong>
             </div>
 
              <t t-if="isTaxIncluded">
@@ -175,7 +176,7 @@
             <t t-if="receipt.total_discount">
                 <div>
                      Discounts
-                    <span t-esc="env.pos.format_currency(receipt.total_discount)" class="pos-receipt-right-align"/>
+                    <span t-esc="env.pos.format_currency(env.pos.get_order().total_discount)" class="pos-receipt-right-align"/>
                 </div>
             </t>
 
@@ -191,7 +192,7 @@
 
             <div>
                  ITEMS NUMBER
-                <strong><span t-esc="receipt.number_of_items" class="pos-receipt-right-align"/></strong>
+                <strong><span t-esc="env.pos.get_order().number_of_items" class="pos-receipt-right-align"/></strong>
             </div>
 
             <div class="pos-receipt-center-align">------------------------------------------------</div>
@@ -204,63 +205,63 @@
                 </tr>
                 <tr>
                     <td>EX</td>
-                    <td><span t-esc="receipt.taxblAmtA"/></td>
-                    <td><span t-esc="receipt.taxAmtA"/></td>
+                    <td><span t-esc="env.pos.get_order().taxblAmtA"/></td>
+                    <td><span t-esc="env.pos.get_order().taxAmtA"/></td>
                 </tr>
                 <tr>
                     <td>16%</td>
-                    <td><span t-esc="receipt.taxblAmtB"/></td>
-                    <td><span t-esc="receipt.taxAmtB"/></td>
+                    <td><span t-esc="env.pos.get_order().taxblAmtB"/></td>
+                    <td><span t-esc="env.pos.get_order().taxAmtB"/></td>
                 </tr>
                 <tr>
                     <td>0%</td>
-                    <td><span t-esc="receipt.taxblAmtC"/></td>
-                    <td><span t-esc="receipt.taxAmtC"/></td>
+                    <td><span t-esc="env.pos.get_order().taxblAmtC"/></td>
+                    <td><span t-esc="env.pos.get_order().taxAmtC"/></td>
                 </tr>
                 <tr>
                     <td>Non-VAT</td>
-                    <td><span t-esc="receipt.taxblAmtD"/></td>
-                    <td><span t-esc="receipt.taxblAmtD"/></td>
+                    <td><span t-esc="env.pos.get_order().taxblAmtD"/></td>
+                    <td><span t-esc="env.pos.get_order().taxblAmtD"/></td>
                 </tr>
                 <tr>
                     <td>8%</td>
-                    <td><span t-esc="receipt.taxblAmtE"/></td>
-                    <td><span t-esc="receipt.taxAmtE"/></td>
+                    <td><span t-esc="env.pos.get_order().taxblAmtE"/></td>
+                    <td><span t-esc="env.pos.get_order().taxAmtE"/></td>
                 </tr>
             </table>
 
             <div class="pos-receipt-center-align">------------------------------------------------</div>
 
             <xpath expr="//img[@id='posqrcode']" position="replace">
-                <t t-if="receipt.l10n_ke_qr_code">
+                <t t-if="env.pos.get_order().l10n_ke_qr_code">
                     <div class="pos-receipt-center-align">SCU INFORMATION</div>
                     <br/>
                         <div>
                             Date:
-                            <span t-esc="receipt.vsdc_rcpt_date" class="pos-receipt-order-data"/>
-                            <span class="pos-receipt-right-align"> Time: <span t-esc="receipt.vsdc_rcpt_time" class="pos-receipt-order-data"/></span>
+                            <span t-esc="env.pos.get_order().vsdc_rcpt_date" class="pos-receipt-order-data"/>
+                            <span class="pos-receipt-right-align"> Time: <span t-esc="env.pos.get_order().vsdc_rcpt_time" class="pos-receipt-order-data"/></span>
                         </div>
                         <div>
                             SCU ID:
-                            <span t-esc="receipt.sdc_id" class="pos-receipt-right-align pos-receipt-order-data"/>
+                            <span t-esc="env.pos.get_order().sdc_id" class="pos-receipt-right-align pos-receipt-order-data"/>
                         </div>
                         <div>
-                            CU INVOICE NO:
-                            <span t-esc="receipt.cu_invoice_no" class="pos-receipt-right-align pos-receipt-order-data"/>
+                            <span>CU INVOICE NO: <t t-esc="env.pos.get_order().sdcId"/>/ <t t-esc="env.pos.get_order().rcpt_no"/>
+                            </span>
                         </div>
                         <br/>
                     <div class="pos-receipt-center-align">
                         <div>Internal Data</div>
-                        <div> <t t-esc="receipt.ke_etims_intrl_data_formatted"/></div>
+                        <div> <t t-esc="env.pos.get_order().ke_etims_intrl_data_formatted"/></div>
                         <br/>
                         <div>Receipt Signature</div>
-                        <div> <t t-esc="receipt.ke_etims_rcpt_sign"/></div>
+                        <div> <t t-esc="env.pos.get_order().ke_etims_rcpt_sign"/></div>
                         <br/>
                         <img id="qr-code-img"/>
                         <script type="text/javascript">
 
                             var image = document.getElementById("qr-code-img");
-                            var qrData = encodeURIComponent("<t t-esc="receipt.l10n_ke_qr_code"/>");
+                            var qrData = encodeURIComponent("<t t-esc="env.pos.get_order().l10n_ke_qr_code"/>");
 
                             image.setAttribute("src", "https://api.qrserver.com/v1/create-qr-code/?data=" + qrData);
                             image.setAttribute("height", "80");

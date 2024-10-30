@@ -157,6 +157,14 @@ class PosOrder(models.Model):
         else:
             return data
 
+    def get_tax_code(self, vat):
+        if vat == 16.0:
+            return 'B'
+        if vat == 0.0:
+            return 'C'
+        if vat == 8.0:
+            return 'E'
+
     def get_payment_code(self, order):
         payment_id = order['statement_ids'][0][2]['payment_method_id']
         payment_code = self.env['pos.payment.method'].search([('id', '=', payment_id)])
@@ -172,6 +180,37 @@ class PosOrder(models.Model):
             else:
                 order['pmtTyCd'] = payment_method.code
 
+        mapped_products = [{'full_product_name': item[2]['full_product_name'],
+                            'product_id': item[2]['product_id']} for item in order['lines']]
+
+        product_result = []
+
+        # Loop through the product data
+        for product in mapped_products:
+            product_id_to_search = product['product_id']
+            tax_type_code = None
+
+            # Search for the product in the product.template model
+            product_record = self.env['product.template'].search([('id', '=', product_id_to_search)])
+            if product_record:
+                if product_record.taxes_id.mapped("amount"):
+                    _logger.info(f'===PRODUCT_RECORD==={product_record.taxes_id.mapped("amount")[0]}')
+                    tax_type_code = product_record.taxes_id.mapped("amount")[0]
+
+                _logger.info(f'')
+
+                product_result.append({
+                    'product_name': product_record.name,
+                    'itemCd': product_record.l10n_ke_item_code,
+                    'itemClsCd': product_record.l10n_ke_product_type_code,
+                    'orgnNatCd': product_record.l10n_ke_origin_country_id.code,
+                    'qtyUnitCd': product_record.uom_id.l10n_ke_quantity_unit_id.code,
+                    'pkgUnitCd': product_record.l10n_ke_packaging_unit_id.code,
+                    'taxTyCd': tax_type_code
+                })
+
+        order['product_info'] = product_result
+        _logger.info(f"===PRODUCT==={product_result}")
         _logger.info(f'=========Payment code===========: {order}')
         return order
 
@@ -340,15 +379,15 @@ class PosOrder(models.Model):
 
             code = product.l10n_ke_item_code or self._calculate_l10n_ke_item_code(product)
             content = {
-                'itemCd':      code if code else "", # Item Code
-                'itemClsCd':   product.unspsc_code_id.code if product.unspsc_code_id.code else "", # HS Code (unspsc format)
-                'itemTyCd':    product.l10n_ke_product_type_code if product.l10n_ke_product_type_code else '2',  # Generally raw material, finished product, service
+                'itemCd':      code, # Item Code
+                'itemClsCd':   product.unspsc_code_id.code, # HS Code (unspsc format)
+                'itemTyCd':    product.l10n_ke_product_type_code,  # Generally raw material, finished product, service
                 'itemNm':      product.name,                                             # Product name
-                'orgnNatCd':   product.l10n_ke_origin_country_id.code if product.l10n_ke_origin_country_id.code else "KE",  # Origin nation code
-                'pkgUnitCd':   product.l10n_ke_packaging_unit_id.code if product.l10n_ke_packaging_unit_id.code else 'NT',  # Packaging unit code
+                'orgnNatCd':   product.l10n_ke_origin_country_id.code,  # Origin nation code
+                'pkgUnitCd':   product.l10n_ke_packaging_unit_id.code,  # Packaging unit code
                 'qtyUnitCd':   product.uom_id.l10n_ke_quantity_unit_id.code,             # Quantity unit code
                 'taxTyCd':     'B',                                                      # Tax type code
-                'bcd':         product.barcode or None,                                  # Self barcode
+                'bcd':         product.barcode,                                  # Self barcode
                 'dftPrc':      product.standard_price,                                   # Standard price
                 'isrcAplcbYn': 'Y' if product.l10n_ke_is_insurance_applicable else 'N',  # Is insurance applicable
                 'useYn': 'Y',
@@ -532,6 +571,17 @@ class PosOrder(models.Model):
                 data['taxAmtD'] = taxAmtD
                 data['taxAmtE'] = taxAmtE
                 data['pmtTyCd'] = pmtTyCd
+                data['itemCd'] = content.get('itemCd', "")
+                data['itemClsCd'] = content.get('itemClsCd', "")
+                data['itemTyCd'] = content.get('itemTyCd', "")
+                data['itemClsTyCd'] = content.get('itemClsTyCd', "")
+                data['orgnNatCd'] = content.get('orgnNatCd', "")
+                data['qtyUnitCd'] = content.get('qtyUnitCd', "")
+                data['taxTyCd'] = content.get('taxTyCd', "")
+                data['regrId'] = content.get('regrId', "")
+                data['regrNm'] = content.get('regrNm', "")
+                data['modrId'] = content.get('modrId', "")
+                data['modrNm'] = content.get('modrNm', "")
 
                 order.cu_invoice_no = data['cu_invoice_no']
 
