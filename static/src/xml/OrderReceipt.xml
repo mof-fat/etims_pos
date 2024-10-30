@@ -246,7 +246,7 @@
                             <span t-esc="env.pos.get_order().sdc_id" class="pos-receipt-right-align pos-receipt-order-data"/>
                         </div>
                         <div>
-                            <span>CU INVOICE NO: <t t-esc="env.pos.get_order().sdcId"/>/ <t t-esc="env.pos.get_order().branch_seq"/>
+                            <span>CU INVOICE NO: <t t-esc="env.pos.get_order().sdcId"/>/ <t t-esc="env.pos.get_order().rcpt_no"/>
                             </span>
                         </div>
                         <br/>

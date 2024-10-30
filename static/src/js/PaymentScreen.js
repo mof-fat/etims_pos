@@ -24,12 +24,60 @@ odoo.define('l10n_ke_etims_vscu_pos.PaymentScreen', function (require) {
             console.log("===Custom function called successfully:===", paymentResult);
 
             if (paymentResult) {
-                order.pmtTyCd = paymentResult.pmtTyCd;
 
-                if (!order.pmtTyCd) {
+                const product_info = paymentResult.product_info;
+                console.log("===product info:===", product_info);
+
+                const fields = {
+                    pmtTyCd: 'Payment Type Code is empty',
+                    itemCd: 'Item Code is empty',
+                    itemTyCd: 'Item Type Code is empty',
+                    orgnNatCd: 'Origin Place Code is empty',
+                    qtyUnitCd: 'Quantity unit Code is empty',
+                    pkgUnitCd: 'Packaging Unit Code is empty',
+                    taxTyCd: 'Taxation Type Code is empty',
+                    regrId: 'Registrant ID is empty',
+                    regrNm: 'Registrant Name is empty',
+                    modrId: 'Modifier ID is empty',
+                    modrNm: 'Moderator Name is empty',
+                };
+
+                let errorMessages = [];
+
+
+                // Process each product in product_info
+                product_info.forEach(product => {
+                    Object.keys(fields).forEach(field => {
+                        // Skip ignored fields
+                        if (['regrId', 'regrNm', 'modrId', 'modrNm','pmtTyCd'].includes(field)) {
+                            return; // Skip to the next iteration
+                        }
+
+                        // Check if the field exists in the product
+                        if (product.hasOwnProperty(field)) {
+                            order[field] = product[field];
+                            if (!order[field]) {
+                                errorMessages.push(`${fields[field]} for: ${product.product_name}.`);
+                            }
+                        }
+                    });
+                });
+
+                Object.keys(fields).forEach(field => {
+                    if (['itemCd', 'itemClsCd', 'itemTyCd', 'orgnNatCd','qtyUnitCd','taxTyCd'].includes(field)) {
+                            return; // Skip to the next iteration
+                        }
+
+                    order[field] = paymentResult[field];
+                    if (!order[field]) {
+                        errorMessages.push(fields[field]);
+                    }
+                });
+
+                if (errorMessages.length > 0) {
                     Gui.showPopup('ErrorPopup', {
                         title: 'KRA E-TIMS ERROR',
-                        body: 'Payment Type Code is empty..'
+                        body: errorMessages.join('\n')
                     });
                     shouldFinalize = false;
                 }
